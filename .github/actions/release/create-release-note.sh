@@ -1,23 +1,24 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Check if both arguments are provided
-if [ $# -ne $COMMITS ]; then
-    echo "env: COMMITS not found."
+################################################################################
+# 1) verify that required environment variables are set
+################################################################################
+if [ -z "$COMMITS" ]; then
+    echo "ERROR: The environment variable COMMITS is not set or is empty."
     exit 1
 fi
-if [ $# -ne $VERSION ]; then
-    echo "env: VERSION not found."
+
+if [ -z "$VERSION" ]; then
+    echo "ERROR: The environment variable VERSION is not set or is empty."
     exit 1
 fi
 
-# Create output file
-OUTPUT_FILE="release-note.md"
+################################################################################
+# 2) Prepare variables
+################################################################################
+CHANGELOG_FILE="CHANGELOG.md"
+NEW_CONTENT="# CHANGELOG\n\n## [${VERSION}]\n\n"
 
-# Write header to file
-echo "# Release v${VERSION}" > $OUTPUT_FILE
-echo "" >> $OUTPUT_FILE
-
-# Initialize categories
 FEATURES=""
 FIXES=""
 DOCS=""
@@ -29,134 +30,95 @@ STYLES=""
 BREAKING=""
 OTHER=""
 
-# Process each commit message
+################################################################################
+# 3) Process commits
+################################################################################
+# Read multi-line $COMMITS, skipping empty lines, parsing with a Regex to 
+# categorize commits based on conventional commit style (e.g. feat(scope): message).
+################################################################################
 echo "$COMMITS" | while IFS= read -r COMMIT; do
     # Skip empty lines
-    if [ -z "$COMMIT" ]; then
-        continue
-    fi
+    [ -z "$COMMIT" ] && continue
 
-    # Clean up the message - remove quotes if present
-    COMMIT=$(echo "$COMMIT" | sed 's/^"//;s/"$//')
+    # Remove any leading/trailing quotes
+    COMMIT="$(echo "$COMMIT" | sed 's/^"//; s/"$//')"
 
-    # Try to parse conventional commit format: type(scope): message
     if [[ $COMMIT =~ ^([a-zA-Z]+)(\([a-zA-Z0-9_-]+\))?!?:\ (.+)$ ]]; then
         TYPE="${BASH_REMATCH[1]}"
         SCOPE="${BASH_REMATCH[2]}"
         MESSAGE="${BASH_REMATCH[3]}"
         
-        # Clean up scope
+        # Clean up parentheses around scope
         SCOPE="${SCOPE//[()]/}"
-        
-        # Format the message
+
+        # Format final line
         if [ -n "$SCOPE" ]; then
             FORMATTED="- **${SCOPE}:** ${MESSAGE}"
         else
             FORMATTED="- ${MESSAGE}"
         fi
         
-        # Check for breaking changes
+        # Check for breaking change (exclamation before colon)
         if [[ $COMMIT =~ ^[a-zA-Z]+(\([a-zA-Z0-9_-]+\))?!: ]]; then
-            BREAKING="${BREAKING}${FORMATTED}\n"
+            BREAKING+="${FORMATTED}\n"
             continue
         fi
-        
+
         # Categorize by type
-        case $TYPE in
-            feat|feature)
-                FEATURES="${FEATURES}${FORMATTED}\n"
-                ;;
-            fix|bugfix)
-                FIXES="${FIXES}${FORMATTED}\n"
-                ;;
-            docs|documentation)
-                DOCS="${DOCS}${FORMATTED}\n"
-                ;;
-            test|tests)
-                TESTS="${TESTS}${FORMATTED}\n"
-                ;;
-            chore|build|ci)
-                CHORES="${CHORES}${FORMATTED}\n"
-                ;;
-            refactor)
-                REFACTORS="${REFACTORS}${FORMATTED}\n"
-                ;;
-            perf|performance)
-                PERF="${PERF}${FORMATTED}\n"
-                ;;
-            style)
-                STYLES="${STYLES}${FORMATTED}\n"
-                ;;
-            *)
-                OTHER="${OTHER}${FORMATTED}\n"
-                ;;
+        case "$TYPE" in
+            feat|feature)       FEATURES+="${FORMATTED}\n" ;;
+            fix|bugfix)         FIXES+="${FORMATTED}\n"    ;;
+            docs|documentation) DOCS+="${FORMATTED}\n"     ;;
+            test|tests)         TESTS+="${FORMATTED}\n"    ;;
+            chore|build|ci)     CHORES+="${FORMATTED}\n"   ;;
+            refactor)           REFACTORS+="${FORMATTED}\n";;
+            perf|performance)   PERF+="${FORMATTED}\n"     ;;
+            style)              STYLES+="${FORMATTED}\n"   ;;
+            *)                  OTHER+="${FORMATTED}\n"    ;;
         esac
     else
-        # For non-conventional commits, just add as-is with some cleanup
+        # Non-conventional commit: just place in OTHER
         FORMATTED="- ${COMMIT}"
-        OTHER="${OTHER}${FORMATTED}\n"
+        OTHER+="${FORMATTED}\n"
     fi
 done
 
-# Write sections to file if they have content
-if [ -n "$BREAKING" ]; then
-    echo "## ⚠️ BREAKING CHANGES" >> $OUTPUT_FILE
-    echo -e "$BREAKING" >> $OUTPUT_FILE
-    echo "" >> $OUTPUT_FILE
+################################################################################
+# 4) Helper function to append sections only if they have content
+################################################################################
+append_section() {
+    local title="$1"
+    local content="$2"
+    [ -n "$content" ] && NEW_CONTENT+=$'### '"${title}"$'\n'"${content}"$'\n'
+}
+
+# Append each section
+append_section "⚠️ BREAKING CHANGES"       "$BREAKING"
+append_section "✨ Features"               "$FEATURES"
+append_section "🐛 Fixes"                  "$FIXES"
+append_section "⚡ Performance Improvements" "$PERF"
+append_section "♻️ Refactors"              "$REFACTORS"
+append_section "📝 Documentation"          "$DOCS"
+append_section "💄 Styles"                 "$STYLES"
+append_section "✅ Tests"                  "$TESTS"
+append_section "🔧 Chores"                 "$CHORES"
+append_section "🔄 Other Changes"          "$OTHER"
+
+################################################################################
+# 5) Capture any existing versions from the CHANGELOG
+################################################################################
+EXISTING_VERSIONS=""
+if [ -f "$CHANGELOG_FILE" ]; then
+    # Extract all content after the FIRST version header in existing CHANGELOG
+    # This way we preserve older versions.
+    EXISTING_VERSIONS=$(awk '/^## \[/{found=1} found' "$CHANGELOG_FILE")
 fi
 
-if [ -n "$FEATURES" ]; then
-    echo "## ✨ Features" >> $OUTPUT_FILE
-    echo -e "$FEATURES" >> $OUTPUT_FILE
-    echo "" >> $OUTPUT_FILE
-fi
+################################################################################
+# 6) Merge new content with old
+################################################################################
+FINAL_CONTENT="${NEW_CONTENT}"
+[ -n "$EXISTING_VERSIONS" ] && FINAL_CONTENT+="${EXISTING_VERSIONS}"
 
-if [ -n "$FIXES" ]; then
-    echo "## 🐛 Fixes" >> $OUTPUT_FILE
-    echo -e "$FIXES" >> $OUTPUT_FILE
-    echo "" >> $OUTPUT_FILE
-fi
-
-if [ -n "$PERF" ]; then
-    echo "## ⚡ Performance Improvements" >> $OUTPUT_FILE
-    echo -e "$PERF" >> $OUTPUT_FILE
-    echo "" >> $OUTPUT_FILE
-fi
-
-if [ -n "$REFACTORS" ]; then
-    echo "## ♻️ Refactors" >> $OUTPUT_FILE
-    echo -e "$REFACTORS" >> $OUTPUT_FILE
-    echo "" >> $OUTPUT_FILE
-fi
-
-if [ -n "$DOCS" ]; then
-    echo "## 📝 Documentation" >> $OUTPUT_FILE
-    echo -e "$DOCS" >> $OUTPUT_FILE
-    echo "" >> $OUTPUT_FILE
-fi
-
-if [ -n "$STYLES" ]; then
-    echo "## 💄 Styles" >> $OUTPUT_FILE
-    echo -e "$STYLES" >> $OUTPUT_FILE
-    echo "" >> $OUTPUT_FILE
-fi
-
-if [ -n "$TESTS" ]; then
-    echo "## ✅ Tests" >> $OUTPUT_FILE
-    echo -e "$TESTS" >> $OUTPUT_FILE
-    echo "" >> $OUTPUT_FILE
-fi
-
-if [ -n "$CHORES" ]; then
-    echo "## 🔧 Chores" >> $OUTPUT_FILE
-    echo -e "$CHORES" >> $OUTPUT_FILE
-    echo "" >> $OUTPUT_FILE
-fi
-
-if [ -n "$OTHER" ]; then
-    echo "## 🔄 Other Changes" >> $OUTPUT_FILE
-    echo -e "$OTHER" >> $OUTPUT_FILE
-    echo "" >> $OUTPUT_FILE
-fi
-
-echo "Release note created at: $OUTPUT_FILE"
+echo -e "$FINAL_CONTENT" > "$CHANGELOG_FILE"
+echo "CHANGELOG.md has been updated with version $VERSION"
