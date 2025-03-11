@@ -25,10 +25,12 @@ jobs:
         GITHUB_CONTEXT: ${{ toJson(github) }}
     
     - name: "Git log"
+      id: get-git-log
       run: |
         echo "GIT_SHA=${GIT_SHA}"
         COMMITS=$(git log --pretty=format:"- %s" ${GIT_SHA}^1..${GIT_SHA})
-        echo "$COMMITS"
+        echo "COMMITS=$COMMITS"
+        echo "COMMITS=$COMMITS" >> $GITHUB_OUTPUT
       env:
         GIT_SHA: ${{github.sha}}
     
@@ -48,8 +50,10 @@ jobs:
       env:
         CURRENT_VERSION: ${{ fromJson(stpes.get-package-json.outputs.PACKAGE_JSON).version }}
 
-    # - name: "Create release pr"
-    #   run: |
-    #     gh pr create -B base_branch -H branch_to_merge --title 'Merge branch_to_merge into base_branch' --body 'Created by Github action'
-    #   env:
-    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: "Create release pr"
+      run: |
+        gh pr create -B 'release/${NEXT_VERSION}' -H main --title 'Release ${NEXT_VERSION}' --body '${GIT_LOG}'
+      env:
+        NEXT_VERSION: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
+        GIT_LOG: ${{ steps.get-git-log.outputs.COMMITS }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
