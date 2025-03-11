@@ -47,7 +47,7 @@ jobs:
       id: get-new-version
       run: |
         echo "CURRENT_VERSION=${CURRENT_VERSION}"
-        NEXT_VERSION=$(npx semver ${CURRENT_VERSION} minor)
+        NEXT_VERSION=$(npx semver ${CURRENT_VERSION} -i minor)
         echo "NEXT_VERSION=${NEXT_VERSION}"
         echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
       env:
