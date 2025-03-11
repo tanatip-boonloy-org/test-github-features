@@ -24,4 +24,4 @@ jobs:
         echo "GIT_SHA=${GIT_SHA}"
         COMMIT=$(git log --oneline ${GIT_SHA}^2..${GIT_SHA})
       env:
-        GIT_SHA: ${github.sha}
+        GIT_SHA: ${{github.sha}}
