@@ -1,0 +1,62 @@
+name: "Create Release"
+on:
+  pull_request:
+    branches: 
+      - main
+    paths-ignore:
+      - 'CHANGELOG.md'
+      - 'package.json'
+    types:
+      - closed
+
+jobs:
+  create-release:
+    if: ${{ github.event.pull_request.merged }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 20
+
+    - name: "Log GitHub context"
+      run: |
+        echo "PR was merged....."
+        echo "$GITHUB_CONTEXT"
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+    
+    - name: "Git log"
+      id: get-git-log
+      run: |
+        echo "GIT_SHA=${GIT_SHA}"
+        COMMITS=$(git log --pretty=format:"- %s" ${GIT_SHA}^1..${GIT_SHA})
+        echo "COMMITS=$COMMITS"
+        echo "COMMITS=$COMMITS" >> $GITHUB_OUTPUT
+      env:
+        GIT_SHA: ${{github.sha}}
+    
+    - name: "Get PackageJson"
+      id: get-package-json
+      run: |
+        PACKAGE_JSON=$(cat package.json)
+        echo "PACKAGE_JSON=${PACKAGE_JSON}" >> $GITHUB_OUTPUT
+
+    - name: "Get New Version"
+      id: get-new-version
+      run: |
+        echo "CURRENT_VERSION=${CURRENT_VERSION}"
+        NEXT_VERSION=$(npx semver ${CURRENT_VERSION} minor)
+        echo "NEXT_VERSION=${NEXT_VERSION}"
+        echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
+      env:
+        CURRENT_VERSION: ${{ fromJson(stpes.get-package-json.outputs.PACKAGE_JSON).version }}
+
+    - name: "Create release pr"
+      run: |
+        gh pr create -B 'release/${NEXT_VERSION}' -H main --title 'Release ${NEXT_VERSION}' --body '${GIT_LOG}'
+      env:
+        NEXT_VERSION: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
+        GIT_LOG: ${{ steps.get-git-log.outputs.COMMITS }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

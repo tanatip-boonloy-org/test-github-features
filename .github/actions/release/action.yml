@@ -1,0 +1,18 @@
+name: "Create Release Note"
+
+inputs:
+  commits:
+    description: "All commit messages from the commit changes"
+    required: true
+  version:
+    description: "Version of the Releasing Library"
+    required: true
+
+runs:
+  using: 'composite'
+  steps:      
+    - run: $GITHUB_ACTION_PATH/create-release-note.sh
+      shell: bash
+      env:
+        COMMITS: ${{ inputs.commits }}
+        VERSION: ${{ inputs.version }}
