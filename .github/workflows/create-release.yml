@@ -51,7 +51,7 @@ jobs:
         echo "NEXT_VERSION=${NEXT_VERSION}"
         echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
       env:
-        CURRENT_VERSION: ${{ fromJson(stpes.get-package-json.outputs.PACKAGE_JSON).version }}
+        CURRENT_VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
 
     - name: "Create release pr"
       run: |
