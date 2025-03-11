@@ -16,6 +16,8 @@ fi
 ################################################################################
 # 2) Prepare variables
 ################################################################################
+COMMITS=$(echo "$COMMIT" | sed 's/|||/\
+/g')
 CHANGELOG_FILE="CHANGELOG.md"
 NEW_CONTENT="# CHANGELOG\n\n## [${VERSION}]\n\n"
 
