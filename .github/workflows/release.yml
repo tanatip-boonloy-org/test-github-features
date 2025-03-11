@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-dept: 20
+
     - name: "Log GitHub context"
       run: |
         echo "PR was merged....."
@@ -22,6 +25,7 @@ jobs:
     - name: "Git log"
       run: |
         echo "GIT_SHA=${GIT_SHA}"
-        COMMIT=$(git log --oneline ${GIT_SHA}^2..${GIT_SHA})
+        COMMITS=$(git log --pretty=format:"- %s" ${GIT_SHA}^2..${GIT_SHA})
+        echo "$COMMITS"
       env:
         GIT_SHA: ${{github.sha}}
