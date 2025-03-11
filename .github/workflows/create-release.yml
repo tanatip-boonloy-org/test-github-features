@@ -40,7 +40,7 @@ jobs:
     - name: "Get PackageJson"
       id: get-package-json
       run: |
-        PACKAGE_JSON=$(cat package.json)
+        PACKAGE_JSON=$(cat package.json | tr -d '\n')
         echo "PACKAGE_JSON=${PACKAGE_JSON}" >> $GITHUB_OUTPUT
 
     - name: "Get New Version"
