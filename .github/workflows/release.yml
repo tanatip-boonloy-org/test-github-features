@@ -9,8 +9,16 @@ jobs:
     if: ${{ github.event.pull_request.merged }}
     runs-on: ubuntu-latest
     steps:
-    - run: |
+    - name: "Log GitHub context"
+      run: |
         echo "PR was merged....."
         echo "$GITHUB_CONTEXT"
       env:
         GITHUB_CONTEXT: ${{ toJson(github) }}
+    
+    - name: "Git log"
+      run: |
+        echo "GIT_SHA=${GIT_SHA}"
+        COMMIT=$(git log --oneline ${GIT_SHA}^2..${GIT_SHA})
+      env:
+        GIT_SHA: ${github.sha}
