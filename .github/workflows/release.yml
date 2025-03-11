@@ -1,0 +1,16 @@
+name: "Release"
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  create-release:
+    if: ${{ github.event.pull_request.merged }}
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+        echo "PR was merged....."
+        echo "$GITHUB_CONTEXT"
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
