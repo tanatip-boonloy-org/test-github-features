@@ -47,10 +47,11 @@ jobs:
       id: get-new-version
       run: |
         echo "CURRENT_VERSION=${CURRENT_VERSION}"
-        NEXT_VERSION=$(npx semver ${CURRENT_VERSION} minor)
+        NEXT_VERSION=$(npx semver ${CURRENT_VERSION} -i ${TAG})
         echo "NEXT_VERSION=${NEXT_VERSION}"
         echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
       env:
+        TAG: ${{ contains(github.event.pull_request.labels.*.name, 'major') && 'major' || contains(github.event.pull_request.labels.*.name, 'patch') && 'patch' || 'minor' }} 
         CURRENT_VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
 
     - uses: actions/create-github-app-token@v1
@@ -58,7 +59,6 @@ jobs:
       with:
         app-id: ${{ secrets.GH_APP_ID }}
         private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-        owner: ${{ github.repository_owner }}
 
     - name: Get GitHub App User ID
       id: get-user-id
