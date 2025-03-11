@@ -51,6 +51,7 @@ jobs:
         echo "NEXT_VERSION=${NEXT_VERSION}"
         echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
       env:
+        TAG: ${{ contains(github.event.pull_request.labels.*.name, 'major') && 'major' || contains(github.event.pull_request.labels.*.name, 'patch') && 'patch' || 'minor' }} 
         CURRENT_VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
 
     - uses: actions/create-github-app-token@v1
