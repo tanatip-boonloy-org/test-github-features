@@ -1,4 +1,4 @@
-name: "Create Release"
+name: "Create Release PR"
 on:
   pull_request:
     branches: 
@@ -51,12 +51,52 @@ jobs:
         echo "NEXT_VERSION=${NEXT_VERSION}"
         echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
       env:
-        CURRENT_VERSION: ${{ fromJson(stpes.get-package-json.outputs.PACKAGE_JSON).version }}
+        CURRENT_VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
+
+    - uses: actions/create-github-app-token@v1
+      id: app-token
+      with:
+        app-id: ${{ secrets.GH_APP_ID }}
+        private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+        owner: ${{ github.repository_owner }}
+
+    - name: Get GitHub App User ID
+      id: get-user-id
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ steps.app-token.outputs.app-token }}
+        script: |
+          const result = await github.rest.users.getByUsername({
+            username: '${{ steps.app-token.outputs.app-slug }}[bot]'
+          })
+          return result.data.id
+
+    - name: Config git
+      shell: bash
+      run: |
+        git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+        git config user.email "${{ steps.get-user-id.outputs.result }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+
+    - name: Create release branch
+      id: create-branch
+      shell: bash
+      run: |
+        git checkout -b ${BRANCH_NAME}
+        echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+      env:
+        BRANCH_NAME: release/${{ steps.get-new-version.outputs.NEXT_VERSION }}
+
+    - name: Run Create Release Note
+      uses: tanatip-boonloy-org/test-github-features/.github/actions/release@main
+      with:
+        commits: ${{ steps.get-git-log.outputs.COMMITS }}
+        version: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
 
     - name: "Create release pr"
       run: |
-        gh pr create -B 'release/${NEXT_VERSION}' -H main --title 'Release ${NEXT_VERSION}' --body '${GIT_LOG}'
+        gh pr create -B '${BRANCH_NAME}' -H main --title 'Release ${NEXT_VERSION}' --body '${GIT_LOG}'
       env:
         NEXT_VERSION: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
+        BRANCH_NAME: ${{ steps.create-branch.outputs.BRANCH_NAME }}
         GIT_LOG: ${{ steps.get-git-log.outputs.COMMITS }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
