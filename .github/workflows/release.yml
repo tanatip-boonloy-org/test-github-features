@@ -7,8 +7,11 @@ on:
 jobs:
   create-release:
     if: ${{ github.event.pull_request.merged }}
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v4
     - name: "Log GitHub context"
       run: |
         echo "PR was merged....."
