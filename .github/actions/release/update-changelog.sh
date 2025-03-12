@@ -49,44 +49,67 @@ for COMMIT in "${DELIMITED_COMMITS[@]}"; do
         continue
     fi
 
-    if [[ $COMMIT =~ ^([a-zA-Z]+)(\([a-zA-Z0-9_-]+\))?!?:\ (.+)$ ]]; then
+    ########################################################################
+    # Single Regex to capture:
+    #   Type = BASH_REMATCH[1]
+    #   Scope = BASH_REMATCH[2] (optional parentheses)
+    #   Exclamation = BASH_REMATCH[3] = "!" if present, else empty
+    #   Message = BASH_REMATCH[4]
+    #
+    # ^([a-zA-Z]+)     - Commit type (letters only)
+    # (\([a-zA-Z0-9_-]+\))? - Optional scope (parentheses) 
+    # (!?)             - Optional exclamation mark
+    # :\               - Literal colon + space
+    # (.+)$            - The rest (commit message)
+    ########################################################################
+    TYPE=""
+    SCOPE=""
+    BREAKING_MARK=""
+    MESSAGE=""
+
+    if [[ $COMMIT =~ ^([a-zA-Z]+)(\([a-zA-Z0-9_-]+\))?(!?):\ (.+)$ ]]; then
         TYPE="${BASH_REMATCH[1]}"
         SCOPE="${BASH_REMATCH[2]}"
-        MESSAGE="${BASH_REMATCH[3]}"
-        
-        # Clean up parentheses around scope
-        SCOPE="${SCOPE//[()]/}"
+        BREAKING_MARK="${BASH_REMATCH[3]}"
+        MESSAGE="${BASH_REMATCH[4]}"
+    fi
 
-        # Format final line
-        if [ -n "$SCOPE" ]; then
-            FORMATTED="- **${SCOPE}:** ${MESSAGE}"
-        else
-            FORMATTED="- ${MESSAGE}"
-        fi
-        
-        # Check for breaking change (exclamation before colon)
-        if [[ $COMMIT =~ ^[a-zA-Z]+(\([a-zA-Z0-9_-]+\))?!: ]]; then
-            BREAKING+="${FORMATTED}\n"
-            continue
-        fi
-
-        # Categorize by type
-        case "$TYPE" in
-            feat|feature)       FEATURES+="${FORMATTED}\n" ;;
-            fix|bugfix)         FIXES+="${FORMATTED}\n"    ;;
-            docs|documentation) DOCS+="${FORMATTED}\n"     ;;
-            test|tests)         TESTS+="${FORMATTED}\n"    ;;
-            chore|build|ci)     CHORES+="${FORMATTED}\n"   ;;
-            refactor)           REFACTORS+="${FORMATTED}\n";;
-            perf|performance)   PERF+="${FORMATTED}\n"     ;;
-            style)              STYLES+="${FORMATTED}\n"   ;;
-            *)                  OTHER+="${FORMATTED}\n"    ;;
-        esac
-    else
-        # Non-conventional commit: just place in OTHER
+    # If TYPE is empty, the commit didn't match the pattern → "OTHER"
+    if [ -z "$TYPE" ]; then
         FORMATTED="- ${COMMIT}"
         OTHER+="${FORMATTED}\n"
+        continue
     fi
+
+    # Clean up parentheses around scope if present
+    SCOPE="${SCOPE//[()]/}"
+
+    # Build final string
+    if [ -n "$SCOPE" ]; then
+        FORMATTED="- **${SCOPE}:** ${MESSAGE}"
+    else
+        FORMATTED="- ${MESSAGE}"
+    fi
+
+    # Check the optional exclamation group
+    # If it's "!", then it's a breaking change
+    if [ "$BREAKING_MARK" = "!" ]; then
+        BREAKING+="${FORMATTED}\n"
+        continue
+    fi
+
+    # Otherwise, categorize by type
+    case "$TYPE" in
+        feat|feature)       FEATURES+="${FORMATTED}\n" ;;
+        fix|bugfix)         FIXES+="${FORMATTED}\n"    ;;
+        docs|documentation) DOCS+="${FORMATTED}\n"     ;;
+        test|tests)         TESTS+="${FORMATTED}\n"    ;;
+        chore|build|ci)     CHORES+="${FORMATTED}\n"   ;;
+        refactor)           REFACTORS+="${FORMATTED}\n";;
+        perf|performance)   PERF+="${FORMATTED}\n"     ;;
+        style)              STYLES+="${FORMATTED}\n"   ;;
+        *)                  OTHER+="${FORMATTED}\n"    ;;
+    esac
 done
 
 ################################################################################
