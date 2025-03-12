@@ -116,7 +116,7 @@ jobs:
 
     - name: "Create release pr"
       run: |
-        gh pr create -B '${BRANCH_NAME}' -H main --title 'Release ${NEXT_VERSION}' --body ''
+        gh pr create -H ${BRANCH_NAME} -B main --title 'Release ${NEXT_VERSION}' --body ''
       env:
         NEXT_VERSION: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
         BRANCH_NAME: ${{ steps.create-branch.outputs.BRANCH_NAME }}
