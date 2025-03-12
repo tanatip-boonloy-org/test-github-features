@@ -47,7 +47,7 @@ jobs:
         ' "${CHANGELOG_FILE}")
 
         echo "EXTRACTED_RELEASE_NOTE=${EXTRACTED_RELEASE_NOTE}"
-        gh release update ${VERSION} -d -t "Release ${VERSION}" --notes ${EXTRACTED_RELEASE_NOTE}
+        gh release update ${VERSION} -d -t "Release ${VERSION}" --notes "${EXTRACTED_RELEASE_NOTE}"
       env:
         VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
         CHANGELOG_FILE: "CHANGELOG.md"
