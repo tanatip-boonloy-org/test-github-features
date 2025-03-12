@@ -8,16 +8,17 @@ if [ -z "$COMMITS" ]; then
     exit 1
 fi
 
+if [ -z "$DELIMITER" ]; then
+    DELIMITER="|||"
+fi
+
 if [ -z "$VERSION" ]; then
     echo "ERROR: The environment variable VERSION is not set or is empty."
     exit 1
 fi
-
 ################################################################################
 # 2) Prepare variables
 ################################################################################
-COMMITS=$(echo "$COMMIT" | sed 's/|||/\
-/g')
 CHANGELOG_FILE="CHANGELOG.md"
 NEW_CONTENT="# CHANGELOG\n\n## [${VERSION}]\n\n"
 
@@ -35,15 +36,18 @@ OTHER=""
 ################################################################################
 # 3) Process commits
 ################################################################################
-# Read multi-line $COMMITS, skipping empty lines, parsing with a Regex to 
-# categorize commits based on conventional commit style (e.g. feat(scope): message).
-################################################################################
-echo "$COMMITS" | while IFS= read -r COMMIT; do
+IFS=$DELIMITER read -ra DELIMITED_COMMITS <<< "$COMMITS"
+for COMMIT in "${DELIMITED_COMMITS[@]}"; do
     # Skip empty lines
     [ -z "$COMMIT" ] && continue
 
     # Remove any leading/trailing quotes
     COMMIT="$(echo "$COMMIT" | sed 's/^"//; s/"$//')"
+
+    # Skip merge commits
+    if [[ "$COMMIT" =~ ^Merge[[:space:]] ]]; then
+        continue
+    fi
 
     if [[ $COMMIT =~ ^([a-zA-Z]+)(\([a-zA-Z0-9_-]+\))?!?:\ (.+)$ ]]; then
         TYPE="${BASH_REMATCH[1]}"
