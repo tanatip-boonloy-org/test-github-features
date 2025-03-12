@@ -11,7 +11,7 @@ inputs:
 runs:
   using: 'composite'
   steps:      
-    - run: $GITHUB_ACTION_PATH/create-release-note.sh
+    - run: $GITHUB_ACTION_PATH/update-changelog.sh
       shell: bash
       env:
         COMMITS: ${{ inputs.commits }}
