@@ -1,0 +1,51 @@
+name: "Release"
+on:
+  pull_request:
+    branches: 
+      - main
+    paths:
+      - 'CHANGELOG.md'
+      - 'package.json'
+      - 'package-lock.json'
+    types:
+      - closed
+
+jobs:
+  release:
+    if: ${{ github.event.pull_request.merged && startsWith(github.head_ref, 'release/')}}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: "Get PackageJson"
+      id: get-package-json
+      run: |
+        PACKAGE_JSON=$(cat package.json | tr -d '\n')
+        echo "PACKAGE_JSON=${PACKAGE_JSON}" >> $GITHUB_OUTPUT
+
+    - uses: actions/create-github-app-token@v1
+      id: app-token
+      with:
+        app-id: ${{ secrets.GH_APP_ID }}
+        private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+    - name: Release NPM Packages
+      run: |
+        echo "release to npm"
+
+    - name: Create & Push Tag
+      run: |
+        git tag v${VERSION}
+        git push origin v${VERSION}
+      env:
+        VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
+    
+    - name: Publish GitHub Release
+      run: |
+        gh release edit v${VERSION} --draft=false
+        rm release-note-temp.md
+      env:
+        VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
+        GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
