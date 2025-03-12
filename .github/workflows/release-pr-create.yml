@@ -127,7 +127,7 @@ jobs:
     
     - name: Create GitHub Release
       run: |
-        EXTRACTED_RELEASE_NOTE=$(awk -v ver="$TARGET_VERSION" '
+        EXTRACTED_RELEASE_NOTE=$(awk -v ver="${VERSION}" '
           # If line matches "## [version]", enable capture
           $0 ~ "^## \\[" ver "\\]" {
             found=1
@@ -144,7 +144,7 @@ jobs:
           found {
             print
           }
-        ' "$CHANGELOG_FILE")
+        ' "${CHANGELOG_FILE}")
 
         echo "EXTRACTED_RELEASE_NOTE=${EXTRACTED_RELEASE_NOTE}"
         gh release create ${VERSION} -d -t "Release ${VERSION}" --notes ${EXTRACTED_RELEASE_NOTE}
