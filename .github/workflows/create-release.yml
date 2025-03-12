@@ -48,8 +48,11 @@ jobs:
       id: get-new-version
       run: |
         echo "CURRENT_VERSION=${CURRENT_VERSION}"
+        echo "TAG=${TAG}"
         NEXT_VERSION=$(npx semver ${CURRENT_VERSION} -i ${TAG})
         echo "NEXT_VERSION=${NEXT_VERSION}"
+
+        echo "TAG=${TAG}" >> $GITHUB_OUTPUT
         echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
       env:
         TAG: ${{ contains(github.event.pull_request.labels.*.name, 'major') && 'major' || contains(github.event.pull_request.labels.*.name, 'patch') && 'patch' || 'minor' }} 
@@ -87,6 +90,12 @@ jobs:
       env:
         BRANCH_NAME: release/${{ steps.get-new-version.outputs.NEXT_VERSION }}
 
+    - name: Update version
+      run: |
+        npm version ${TAG}
+      env:
+        TAG: ${{ steps.get-new-version.outputs.TAG }}
+
     - name: Run Create Release Note
       uses: tanatip-boonloy-org/test-github-features/.github/actions/release@main
       with:
@@ -95,6 +104,7 @@ jobs:
     
     - name: Commit & Push Changes
       run: |
+        git add CHANGELOG.md
         git commit -m "[Automated] Release version ${VERSION}"
         git push origin ${BRANCH_NAME}
       env:
