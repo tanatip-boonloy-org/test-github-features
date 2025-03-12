@@ -12,18 +12,12 @@ on:
 
 jobs:
   create-release-pr:
-    if: ${{ github.event.pull_request.merged && github && !startsWith(github.head_ref, 'release/')}}
+    if: ${{ github.event.pull_request.merged && !startsWith(github.head_ref, 'release/')}}
     permissions:
       contents: read
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: "Log GitHub context"
-      run: |
-        echo "PR was merged....."
-        echo "$GITHUB_CONTEXT"
-      env:
-        GITHUB_CONTEXT: ${{ toJson(github) }}
 
     - name: "Get PackageJson"
       id: get-package-json
