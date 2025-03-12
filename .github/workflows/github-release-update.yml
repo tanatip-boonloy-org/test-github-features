@@ -6,7 +6,7 @@ on:
 
 jobs:
   update-github-release:
-    if: ${{ !startsWith(github.event.head_commit.message, '[Automated] Release version') }}
+    # if: ${{ !startsWith(github.event.head_commit.message, '[Automated] Release version') }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -28,27 +28,26 @@ jobs:
     - name: Create GitHub Release
       run: |
         EXTRACTED_RELEASE_NOTE=$(awk -v ver="${VERSION}" '
-          # If line matches "## [version]", enable capture
           $0 ~ "^## \\[" ver "\\]" {
             found=1
             next
           }
-
-          # If we encounter another "## [" heading and we were capturing, stop.
-          # (i.e. we’ve reached the next version heading.)
           found && /^## \[/ {
             found=0
           }
-
-          # If we are in capture mode, print the current line
           found {
             print
           }
         ' "${CHANGELOG_FILE}")
 
         echo "EXTRACTED_RELEASE_NOTE=${EXTRACTED_RELEASE_NOTE}"
-        gh release edit ${VERSION} --notes "${EXTRACTED_RELEASE_NOTE}"
+        ${UPDATE_OR_CREATE_GH_RELEASE}
       env:
         VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
         CHANGELOG_FILE: "CHANGELOG.md"
         GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        UPDATE_OR_CREATE_GH_RELEASE: |
+          ${{ startsWith(github.event.head_commit.message, '[Automated] Release version')
+            && 'gh release create ${VERSION} -d -t "Release ${VERSION}" --notes "${EXTRACTED_RELEASE_NOTE}"'
+            || 'gh release edit ${VERSION} --notes "${EXTRACTED_RELEASE_NOTE}"'
+          }}
