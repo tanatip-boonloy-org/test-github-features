@@ -17,27 +17,13 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 20
-
     - name: "Log GitHub context"
       run: |
         echo "PR was merged....."
         echo "$GITHUB_CONTEXT"
       env:
         GITHUB_CONTEXT: ${{ toJson(github) }}
-    
-    - name: "Git log"
-      id: get-git-log
-      run: |
-        echo "GIT_SHA=${GIT_SHA}"
-        COMMITS=$(git log --pretty=format:"%s" ${GIT_SHA}^1..${GIT_SHA} | sed ':a;N;$!ba;s/\n/|||/g')
-        echo "COMMITS=$COMMITS"
-        echo "COMMITS=$COMMITS" >> $GITHUB_OUTPUT
-      env:
-        GIT_SHA: ${{github.sha}}
-    
+
     - name: "Get PackageJson"
       id: get-package-json
       run: |
@@ -63,6 +49,22 @@ jobs:
       with:
         app-id: ${{ secrets.GH_APP_ID }}
         private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 20
+        ref: main
+        token: ${{ steps.app-token.outputs.token }}
+    
+    - name: "Git log"
+      id: get-git-log
+      run: |
+        echo "GIT_SHA=${GIT_SHA}"
+        COMMITS=$(git log --pretty=format:"%s" ${GIT_SHA}^1..${GIT_SHA} | sed ':a;N;$!ba;s/\n/|||/g')
+        echo "COMMITS=$COMMITS"
+        echo "COMMITS=$COMMITS" >> $GITHUB_OUTPUT
+      env:
+        GIT_SHA: ${{github.sha}}
 
     - name: Get GitHub App User ID
       id: get-user-id
