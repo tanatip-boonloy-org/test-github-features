@@ -14,7 +14,6 @@ jobs:
     if: ${{ github.event.pull_request.merged && github && !startsWith(github.head_ref, 'release/')}}
     permissions:
       contents: read
-      pull-requests: write
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -51,6 +50,26 @@ jobs:
         app-id: ${{ secrets.GH_APP_ID }}
         private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
+    - name: Get GitHub App User ID
+      id: get-user-id
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ steps.app-token.outputs.token }}
+        script: |
+          const result = await github.rest.users.getByUsername({
+            username: '${{ steps.app-token.outputs.app-slug }}[bot]'
+          })
+          return result.data.id
+
+    - name: Config git
+      shell: bash
+      run: |
+        git config user.name "${APP_SLUG}[bot]"
+        git config user.email "${APP_USER_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+      env:
+        APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        APP_USER_ID: ${{ steps.get-user-id.outputs.result }}
+
     - uses: actions/checkout@v4
       with:
         fetch-depth: 20
@@ -67,23 +86,6 @@ jobs:
       env:
         GIT_SHA: ${{github.sha}}
         DELIMITER: "|||"
-
-    - name: Get GitHub App User ID
-      id: get-user-id
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{ steps.app-token.outputs.token }}
-        script: |
-          const result = await github.rest.users.getByUsername({
-            username: '${{ steps.app-token.outputs.app-slug }}[bot]'
-          })
-          return result.data.id
-
-    - name: Config git
-      shell: bash
-      run: |
-        git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
-        git config user.email "${{ steps.get-user-id.outputs.result }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
 
     - name: Create release branch
       id: create-branch
@@ -151,3 +153,4 @@ jobs:
       env:
         VERSION: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
         CHANGELOG_FILE: "CHANGELOG.md"
+        GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
