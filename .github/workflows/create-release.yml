@@ -121,4 +121,4 @@ jobs:
         NEXT_VERSION: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
         BRANCH_NAME: ${{ steps.create-branch.outputs.BRANCH_NAME }}
         GIT_LOG: ${{ steps.get-git-log.outputs.COMMITS }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
