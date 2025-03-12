@@ -61,11 +61,12 @@ jobs:
       id: get-git-log
       run: |
         echo "GIT_SHA=${GIT_SHA}"
-        COMMITS=$(git log --pretty=format:"%s" ${GIT_SHA}^1..${GIT_SHA} | sed ':a;N;$!ba;s/\n/|||/g')
+        COMMITS=$(git log --pretty=format:"%s" ${GIT_SHA}^1..${GIT_SHA} | sed ':a;N;$!ba;s/\n/${DELIMITER}/g')
         echo "COMMITS=$COMMITS"
         echo "COMMITS=$COMMITS" >> $GITHUB_OUTPUT
       env:
         GIT_SHA: ${{github.sha}}
+        DELIMITER: "|||"
 
     - name: Get GitHub App User ID
       id: get-user-id
