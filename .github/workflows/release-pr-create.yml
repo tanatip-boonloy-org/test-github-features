@@ -124,3 +124,10 @@ jobs:
         BRANCH_NAME: ${{ steps.create-branch.outputs.BRANCH_NAME }}
         GIT_LOG: ${{ steps.get-git-log.outputs.COMMITS }}
         GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+    
+    - name: Create GitHub Release
+      run: |
+        gh release create ${VERSION} -d -t "Release ${VERSION}" --notes "Draft Release ${VERSION}"
+      env:
+        VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
+        CHANGELOG_FILE: "CHANGELOG.md"
