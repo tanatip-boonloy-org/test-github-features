@@ -14,6 +14,7 @@ jobs:
     if: ${{ github.event.pull_request.merged }}
     permissions:
       contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -91,6 +92,14 @@ jobs:
       with:
         commits: ${{ steps.get-git-log.outputs.COMMITS }}
         version: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
+    
+    - name: Commit & Push Changes
+      run: |
+        git commit -m "[Automated] Release version ${VERSION}"
+        git push origin ${BRANCH_NAME}
+      env:
+        VERSION: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
+        BRANCH_NAME: release/${{ steps.get-new-version.outputs.NEXT_VERSION }}
 
     - name: "Create release pr"
       run: |
