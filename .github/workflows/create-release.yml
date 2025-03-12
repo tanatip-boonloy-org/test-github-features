@@ -90,17 +90,17 @@ jobs:
       env:
         BRANCH_NAME: release/${{ steps.get-new-version.outputs.NEXT_VERSION }}
 
-    - name: Run Create Release Note
-      uses: tanatip-boonloy-org/test-github-features/.github/actions/release@main
-      with:
-        commits: ${{ steps.get-git-log.outputs.COMMITS }}
-        version: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
-
     - name: Update version
       run: |
         npm version ${TAG}
       env:
         TAG: ${{ steps.get-new-version.outputs.TAG }}
+
+    - name: Run Create Release Note
+      uses: tanatip-boonloy-org/test-github-features/.github/actions/release@main
+      with:
+        commits: ${{ steps.get-git-log.outputs.COMMITS }}
+        version: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
     
     - name: Commit & Push Changes
       run: |
