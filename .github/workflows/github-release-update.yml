@@ -20,7 +20,7 @@ jobs:
         echo "PACKAGE_JSON=${PACKAGE_JSON}" >> $GITHUB_OUTPUT
 
     - name: Create GitHub Release
-    - run: |
+      run: |
         EXTRACTED_RELEASE_NOTE=$(awk -v ver="${VERSION}" '
           # If line matches "## [version]", enable capture
           $0 ~ "^## \\[" ver "\\]" {
