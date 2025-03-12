@@ -47,7 +47,7 @@ jobs:
     - name: Create GitHub Release
       if: ${{ startsWith(github.event.head_commit.message, '[Automated] Release version') }}
       run: |
-        gh release create ${VERSION} -d -t "Release ${VERSION}" --notes "${EXTRACTED_RELEASE_NOTE}" --notes-file release-note-temp.md
+        gh release create v${VERSION} -d -t "Release v${VERSION}" --notes "${EXTRACTED_RELEASE_NOTE}" --notes-file release-note-temp.md
         rm release-note-temp.md
       env:
         VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
@@ -56,7 +56,7 @@ jobs:
     - name: Update GitHub Release
       if: ${{ !startsWith(github.event.head_commit.message, '[Automated] Release version') }}
       run: |
-        gh release edit ${{ env.VERSION }} --notes "${EXTRACTED_RELEASE_NOTE}" --notes-file release-note-temp.md
+        gh release edit v${VERSION} --notes "${EXTRACTED_RELEASE_NOTE}" --notes-file release-note-temp.md
         rm release-note-temp.md
       env:
         VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
