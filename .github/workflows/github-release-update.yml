@@ -6,7 +6,6 @@ on:
 
 jobs:
   update-github-release:
-    # if: ${{ !startsWith(github.event.head_commit.message, '[Automated] Release version') }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -40,7 +39,6 @@ jobs:
           }
         ' "${CHANGELOG_FILE}")
 
-        echo "EXTRACTED_RELEASE_NOTE=${EXTRACTED_RELEASE_NOTE}"
         echo -e $EXTRACTED_RELEASE_NOTE >> release-note-temp.md
       env:
         VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
