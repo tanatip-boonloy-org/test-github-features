@@ -25,7 +25,7 @@ jobs:
         app-id: ${{ secrets.GH_APP_ID }}
         private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
-    - name: Create GitHub Release
+    - name: Extract Release Note
       run: |
         EXTRACTED_RELEASE_NOTE=$(awk -v ver="${VERSION}" '
           $0 ~ "^## \\[" ver "\\]" {
@@ -41,13 +41,25 @@ jobs:
         ' "${CHANGELOG_FILE}")
 
         echo "EXTRACTED_RELEASE_NOTE=${EXTRACTED_RELEASE_NOTE}"
-        ${UPDATE_OR_CREATE_GH_RELEASE}
+        echo $EXTRACTED_RELEASE_NOTE >> release-note-temp.md
       env:
         VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
         CHANGELOG_FILE: "CHANGELOG.md"
+
+    - name: Create GitHub Release
+      if: ${{ startsWith(github.event.head_commit.message, '[Automated] Release version') }}
+      run: |
+        gh release create ${VERSION} -d -t "Release ${VERSION}" --notes "${EXTRACTED_RELEASE_NOTE}" --notes-file release-note-temp.md
+        rm release-note-temp.md
+      env:
+        VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
         GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        UPDATE_OR_CREATE_GH_RELEASE: |
-          ${{ startsWith(github.event.head_commit.message, '[Automated] Release version')
-            && 'gh release create ${VERSION} -d -t "Release ${VERSION}" --notes "${EXTRACTED_RELEASE_NOTE}"'
-            || 'gh release edit ${VERSION} --notes "${EXTRACTED_RELEASE_NOTE}"'
-          }}
+
+    - name: Update GitHub Release
+      if: ${{ !startsWith(github.event.head_commit.message, '[Automated] Release version') }}
+      run: |
+        gh release edit ${{ env.VERSION }} --notes "${EXTRACTED_RELEASE_NOTE}" --notes-file release-note-temp.md
+        rm release-note-temp.md
+      env:
+        VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
+        GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
