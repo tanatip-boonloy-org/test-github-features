@@ -10,7 +10,7 @@ on:
       - closed
 
 jobs:
-  create-release:
+  create-release-pr:
     if: ${{ github.event.pull_request.merged && github && !startsWith(github.head_ref, 'release/')}}
     permissions:
       contents: read
@@ -96,7 +96,7 @@ jobs:
 
     - name: Update version
       run: |
-        npm version ${TAG}
+        npm version ${TAG} --no-git-tag-version
       env:
         TAG: ${{ steps.get-new-version.outputs.TAG }}
 
@@ -108,6 +108,7 @@ jobs:
     
     - name: Commit & Push Changes
       run: |
+        git add package.json package-lock.json
         git add CHANGELOG.md
         git commit -m "[Automated] Release version ${VERSION}"
         git push origin ${BRANCH_NAME}
