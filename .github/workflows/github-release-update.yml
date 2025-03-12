@@ -6,49 +6,42 @@ on:
 
 jobs:
   update-github-release:
+    if: ${{ !startsWith(github.event.head_commit.message, '[Automated] Release version') }}
     permissions:
       contents: read
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
-    # Need to ignore automate commit & push
-    - name: "Log GitHub context"
+    - name: "Get PackageJson"
+      id: get-package-json
       run: |
-        echo "PR was merged....."
-        echo "$GITHUB_CONTEXT"
+        PACKAGE_JSON=$(cat package.json | tr -d '\n')
+        echo "PACKAGE_JSON=${PACKAGE_JSON}" >> $GITHUB_OUTPUT
+
+    - name: Create GitHub Release
+    - run: |
+        EXTRACTED_RELEASE_NOTE=$(awk -v ver="$TARGET_VERSION" '
+          # If line matches "## [version]", enable capture
+          $0 ~ "^## \\[" ver "\\]" {
+            found=1
+            next
+          }
+
+          # If we encounter another "## [" heading and we were capturing, stop.
+          # (i.e. we’ve reached the next version heading.)
+          found && /^## \[/ {
+            found=0
+          }
+
+          # If we are in capture mode, print the current line
+          found {
+            print
+          }
+        ' "$CHANGELOG_FILE")
+
+        echo "EXTRACTED_RELEASE_NOTE=${EXTRACTED_RELEASE_NOTE}"
+        gh release update ${VERSION} -d -t "Release ${VERSION}" --notes ${EXTRACTED_RELEASE_NOTE}
       env:
-        GITHUB_CONTEXT: ${{ toJson(github) }}
-
-    # - name: "Get PackageJson"
-    #   id: get-package-json
-    #   run: |
-    #     PACKAGE_JSON=$(cat package.json | tr -d '\n')
-    #     echo "PACKAGE_JSON=${PACKAGE_JSON}" >> $GITHUB_OUTPUT
-
-    # - name: Create GitHub Release
-    # - run: |
-    #     EXTRACTED_RELEASE_NOTE=$(awk -v ver="$TARGET_VERSION" '
-    #       # If line matches "## [version]", enable capture
-    #       $0 ~ "^## \\[" ver "\\]" {
-    #         found=1
-    #         next
-    #       }
-
-    #       # If we encounter another "## [" heading and we were capturing, stop.
-    #       # (i.e. we’ve reached the next version heading.)
-    #       found && /^## \[/ {
-    #         found=0
-    #       }
-
-    #       # If we are in capture mode, print the current line
-    #       found {
-    #         print
-    #       }
-    #     ' "$CHANGELOG_FILE")
-
-    #     echo "EXTRACTED_RELEASE_NOTE=${EXTRACTED_RELEASE_NOTE}"
-    #     gh release update ${VERSION} -d -t "Release ${VERSION}" --notes ${EXTRACTED_RELEASE_NOTE}
-    #   env:
-    #     VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
-    #     CHANGELOG_FILE: "CHANGELOG.md"
+        VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
+        CHANGELOG_FILE: "CHANGELOG.md"
