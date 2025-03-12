@@ -41,7 +41,7 @@ jobs:
         ' "${CHANGELOG_FILE}")
 
         echo "EXTRACTED_RELEASE_NOTE=${EXTRACTED_RELEASE_NOTE}"
-        echo $EXTRACTED_RELEASE_NOTE >> release-note-temp.md
+        echo -e $EXTRACTED_RELEASE_NOTE >> release-note-temp.md
       env:
         VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
         CHANGELOG_FILE: "CHANGELOG.md"
