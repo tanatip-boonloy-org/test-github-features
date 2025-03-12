@@ -10,8 +10,8 @@ on:
       - closed
 
 jobs:
-  create-release:
-    if: ${{ github.event.pull_request.merged }}
+  create-release-pr:
+    if: ${{ github.event.pull_request.merged && github && !startsWith(github.head_ref, 'release/')}}
     permissions:
       contents: read
       pull-requests: write
@@ -61,7 +61,7 @@ jobs:
       id: get-git-log
       run: |
         echo "GIT_SHA=${GIT_SHA}"
-        COMMITS=$(git log --pretty=format:"%s" ${GIT_SHA}^1..${GIT_SHA} | sed ':a;N;$!ba;s/\n/${DELIMITER}/g')
+        COMMITS=$(git log --pretty=format:"%s" ${GIT_SHA}^1..${GIT_SHA} | sed ":a;N;$!ba;s/\n/${DELIMITER}/g")
         echo "COMMITS=$COMMITS"
         echo "COMMITS=$COMMITS" >> $GITHUB_OUTPUT
       env:
@@ -96,7 +96,7 @@ jobs:
 
     - name: Update version
       run: |
-        npm version ${TAG}
+        npm version ${TAG} --no-git-tag-version
       env:
         TAG: ${{ steps.get-new-version.outputs.TAG }}
 
@@ -108,6 +108,7 @@ jobs:
     
     - name: Commit & Push Changes
       run: |
+        git add package.json package-lock.json
         git add CHANGELOG.md
         git commit -m "[Automated] Release version ${VERSION}"
         git push origin ${BRANCH_NAME}
@@ -117,9 +118,36 @@ jobs:
 
     - name: "Create release pr"
       run: |
-        gh pr create -H ${BRANCH_NAME} -B main --title 'Release ${NEXT_VERSION}' --body ''
+        gh pr create -H ${BRANCH_NAME} -B main --title "Release ${NEXT_VERSION}" --body ''
       env:
         NEXT_VERSION: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
         BRANCH_NAME: ${{ steps.create-branch.outputs.BRANCH_NAME }}
         GIT_LOG: ${{ steps.get-git-log.outputs.COMMITS }}
         GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+    
+    - name: Create GitHub Release
+      run: |
+        EXTRACTED_RELEASE_NOTE=$(awk -v ver="$TARGET_VERSION" '
+          # If line matches "## [version]", enable capture
+          $0 ~ "^## \\[" ver "\\]" {
+            found=1
+            next
+          }
+
+          # If we encounter another "## [" heading and we were capturing, stop.
+          # (i.e. we’ve reached the next version heading.)
+          found && /^## \[/ {
+            found=0
+          }
+
+          # If we are in capture mode, print the current line
+          found {
+            print
+          }
+        ' "$CHANGELOG_FILE")
+
+        echo "EXTRACTED_RELEASE_NOTE=${EXTRACTED_RELEASE_NOTE}"
+        gh release create ${VERSION} -d -t "Release ${VERSION}" --notes ${EXTRACTED_RELEASE_NOTE}
+      env:
+        VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
+        CHANGELOG_FILE: "CHANGELOG.md"
