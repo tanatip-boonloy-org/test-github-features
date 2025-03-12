@@ -8,16 +8,17 @@ if [ -z "$COMMITS" ]; then
     exit 1
 fi
 
+if [ -z "$DELIMITER" ]; then
+    DELIMITER="|||"
+fi
+
 if [ -z "$VERSION" ]; then
     echo "ERROR: The environment variable VERSION is not set or is empty."
     exit 1
 fi
-
 ################################################################################
 # 2) Prepare variables
 ################################################################################
-COMMITS=$(echo "$COMMIT" | sed 's/|||/\
-/g')
 CHANGELOG_FILE="CHANGELOG.md"
 NEW_CONTENT="# CHANGELOG\n\n## [${VERSION}]\n\n"
 
@@ -35,54 +36,80 @@ OTHER=""
 ################################################################################
 # 3) Process commits
 ################################################################################
-# Read multi-line $COMMITS, skipping empty lines, parsing with a Regex to 
-# categorize commits based on conventional commit style (e.g. feat(scope): message).
-################################################################################
-echo "$COMMITS" | while IFS= read -r COMMIT; do
+IFS=$DELIMITER read -ra DELIMITED_COMMITS <<< "$COMMITS"
+for COMMIT in "${DELIMITED_COMMITS[@]}"; do
     # Skip empty lines
     [ -z "$COMMIT" ] && continue
 
     # Remove any leading/trailing quotes
     COMMIT="$(echo "$COMMIT" | sed 's/^"//; s/"$//')"
 
-    if [[ $COMMIT =~ ^([a-zA-Z]+)(\([a-zA-Z0-9_-]+\))?!?:\ (.+)$ ]]; then
+    # Skip merge commits
+    if [[ "$COMMIT" =~ ^Merge[[:space:]] ]]; then
+        continue
+    fi
+
+    ########################################################################
+    # Single Regex to capture:
+    #   Type = BASH_REMATCH[1]
+    #   Scope = BASH_REMATCH[2] (optional parentheses)
+    #   Exclamation = BASH_REMATCH[3] = "!" if present, else empty
+    #   Message = BASH_REMATCH[4]
+    #
+    # ^([a-zA-Z]+)     - Commit type (letters only)
+    # (\([a-zA-Z0-9_-]+\))? - Optional scope (parentheses) 
+    # (!?)             - Optional exclamation mark
+    # :\               - Literal colon + space
+    # (.+)$            - The rest (commit message)
+    ########################################################################
+    TYPE=""
+    SCOPE=""
+    BREAKING_MARK=""
+    MESSAGE=""
+
+    if [[ $COMMIT =~ ^([a-zA-Z]+)(\([a-zA-Z0-9_-]+\))?(!?):\ (.+)$ ]]; then
         TYPE="${BASH_REMATCH[1]}"
         SCOPE="${BASH_REMATCH[2]}"
-        MESSAGE="${BASH_REMATCH[3]}"
-        
-        # Clean up parentheses around scope
-        SCOPE="${SCOPE//[()]/}"
+        BREAKING_MARK="${BASH_REMATCH[3]}"
+        MESSAGE="${BASH_REMATCH[4]}"
+    fi
 
-        # Format final line
-        if [ -n "$SCOPE" ]; then
-            FORMATTED="- **${SCOPE}:** ${MESSAGE}"
-        else
-            FORMATTED="- ${MESSAGE}"
-        fi
-        
-        # Check for breaking change (exclamation before colon)
-        if [[ $COMMIT =~ ^[a-zA-Z]+(\([a-zA-Z0-9_-]+\))?!: ]]; then
-            BREAKING+="${FORMATTED}\n"
-            continue
-        fi
-
-        # Categorize by type
-        case "$TYPE" in
-            feat|feature)       FEATURES+="${FORMATTED}\n" ;;
-            fix|bugfix)         FIXES+="${FORMATTED}\n"    ;;
-            docs|documentation) DOCS+="${FORMATTED}\n"     ;;
-            test|tests)         TESTS+="${FORMATTED}\n"    ;;
-            chore|build|ci)     CHORES+="${FORMATTED}\n"   ;;
-            refactor)           REFACTORS+="${FORMATTED}\n";;
-            perf|performance)   PERF+="${FORMATTED}\n"     ;;
-            style)              STYLES+="${FORMATTED}\n"   ;;
-            *)                  OTHER+="${FORMATTED}\n"    ;;
-        esac
-    else
-        # Non-conventional commit: just place in OTHER
+    # If TYPE is empty, the commit didn't match the pattern → "OTHER"
+    if [ -z "$TYPE" ]; then
         FORMATTED="- ${COMMIT}"
         OTHER+="${FORMATTED}\n"
+        continue
     fi
+
+    # Clean up parentheses around scope if present
+    SCOPE="${SCOPE//[()]/}"
+
+    # Build final string
+    if [ -n "$SCOPE" ]; then
+        FORMATTED="- **${SCOPE}:** ${MESSAGE}"
+    else
+        FORMATTED="- ${MESSAGE}"
+    fi
+
+    # Check the optional exclamation group
+    # If it's "!", then it's a breaking change
+    if [ "$BREAKING_MARK" = "!" ]; then
+        BREAKING+="${FORMATTED}\n"
+        continue
+    fi
+
+    # Otherwise, categorize by type
+    case "$TYPE" in
+        feat|feature)       FEATURES+="${FORMATTED}\n" ;;
+        fix|bugfix)         FIXES+="${FORMATTED}\n"    ;;
+        docs|documentation) DOCS+="${FORMATTED}\n"     ;;
+        test|tests)         TESTS+="${FORMATTED}\n"    ;;
+        chore|build|ci)     CHORES+="${FORMATTED}\n"   ;;
+        refactor)           REFACTORS+="${FORMATTED}\n";;
+        perf|performance)   PERF+="${FORMATTED}\n"     ;;
+        style)              STYLES+="${FORMATTED}\n"   ;;
+        *)                  OTHER+="${FORMATTED}\n"    ;;
+    esac
 done
 
 ################################################################################

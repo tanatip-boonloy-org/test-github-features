@@ -4,6 +4,10 @@ inputs:
   commits:
     description: "All commit messages from the commit changes"
     required: true
+  delimiter:
+    description: "Delimiter for the commits string"
+    required: false
+    default: "|||"
   version:
     description: "Version of the Releasing Library"
     required: true
@@ -15,4 +19,5 @@ runs:
       shell: bash
       env:
         COMMITS: ${{ inputs.commits }}
+        DELIMITER: ${{ inputs.delimiter }}
         VERSION: ${{ inputs.version }}
