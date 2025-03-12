@@ -127,25 +127,3 @@ jobs:
         BRANCH_NAME: ${{ steps.create-branch.outputs.BRANCH_NAME }}
         GIT_LOG: ${{ steps.get-git-log.outputs.COMMITS }}
         GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-    
-    # - name: Create GitHub Release
-    #   run: |
-    #     EXTRACTED_RELEASE_NOTE=$(awk -v ver="${VERSION}" '
-    #       $0 ~ "^## \\[" ver "\\]" {
-    #         found=1
-    #         next
-    #       }
-    #       found && /^## \[/ {
-    #         found=0
-    #       }
-    #       found {
-    #         print
-    #       }
-    #     ' "${CHANGELOG_FILE}")
-
-    #     echo "EXTRACTED_RELEASE_NOTE=${EXTRACTED_RELEASE_NOTE}"
-    #     gh release create ${VERSION} -d -t "Release ${VERSION}" --notes "${EXTRACTED_RELEASE_NOTE}"
-    #   env:
-    #     VERSION: ${{ steps.get-new-version.outputs.NEXT_VERSION }}
-    #     CHANGELOG_FILE: "CHANGELOG.md"
-    #     GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
