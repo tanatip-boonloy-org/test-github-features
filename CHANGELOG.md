@@ -4,5 +4,5 @@
 
 ### 🐛 Fixes
 - separate create and update gh release actions
-
+- Test update changelog
 
