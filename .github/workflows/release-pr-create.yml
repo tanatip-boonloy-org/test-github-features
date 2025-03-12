@@ -127,7 +127,27 @@ jobs:
     
     - name: Create GitHub Release
       run: |
-        gh release create ${VERSION} -d -t "Release ${VERSION}" --notes "Draft Release ${VERSION}"
+        EXTRACTED_RELEASE_NOTE=$(awk -v ver="$TARGET_VERSION" '
+          # If line matches "## [version]", enable capture
+          $0 ~ "^## \\[" ver "\\]" {
+            found=1
+            next
+          }
+
+          # If we encounter another "## [" heading and we were capturing, stop.
+          # (i.e. we’ve reached the next version heading.)
+          found && /^## \[/ {
+            found=0
+          }
+
+          # If we are in capture mode, print the current line
+          found {
+            print
+          }
+        ' "$CHANGELOG_FILE")
+
+        echo "EXTRACTED_RELEASE_NOTE=${EXTRACTED_RELEASE_NOTE}"
+        gh release create ${VERSION} -d -t "Release ${VERSION}" --notes ${EXTRACTED_RELEASE_NOTE}
       env:
         VERSION: ${{ fromJson(steps.get-package-json.outputs.PACKAGE_JSON).version }}
         CHANGELOG_FILE: "CHANGELOG.md"
